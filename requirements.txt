@@ -1,0 +1,30 @@
+# Data manipulation
+pandas>=2.0
+numpy>=1.24
+
+# Statistical modeling & causal inference
+statsmodels>=0.14
+linearmodels>=5.3
+scipy>=1.11
+
+# Machine learning (for synthetic control)
+scikit-learn>=1.3
+
+# Visualization
+matplotlib>=3.7
+seaborn>=0.12
+plotly>=5.15
+
+# Jupyter
+jupyter>=1.0
+notebook>=7.0
+ipykernel>=6.25
+
+# Census data access
+census>=0.8
+us>=3.1
+
+# Utilities
+requests>=2.31
+openpyxl>=3.1
+tqdm>=4.65
