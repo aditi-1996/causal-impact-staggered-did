@@ -197,3 +197,71 @@ def run_event_study(
 
     es_df = pd.DataFrame(records).sort_values('event_time').reset_index(drop=True)
     return model, es_df
+
+
+# ── Cohort-specific ATT (simplified Callaway-Sant'Anna) ───────────────────────
+
+def run_cohort_did(
+    panel: pd.DataFrame,
+    outcome: str,
+    controls: list = None,
+) -> pd.DataFrame:
+    """
+    Cohort-specific average treatment effects on the treated (ATTs).
+
+    For each expansion cohort g, estimates a clean 2×2 DiD using
+    never-treated states as the control group, following the logic of
+    Callaway & Sant'Anna (2021).  Avoids using already-treated units
+    as controls, which biases standard TWFE under heterogeneous effects.
+
+    Returns
+    -------
+    DataFrame with columns:
+        cohort_year, n_treated, n_control, coef, se, ci_lower, ci_upper,
+        pvalue, pre_mean_treated, pre_mean_control
+    """
+    never = panel[panel['ever_expanded'] == 0]
+    cohort_years = sorted(
+        panel.loc[panel['ever_expanded'] == 1, 'cohort_group'].unique()
+    )
+    cohort_years = [int(g) for g in cohort_years if g > 0]
+
+    records = []
+    for g in cohort_years:
+        treated = panel[panel['cohort_group'] == g]
+        df = pd.concat([treated, never], ignore_index=True).copy()
+        df = df[df[outcome].notna()].copy()
+
+        df['post']         = (df['year'] >= g).astype(int)
+        df['treat']        = (df['cohort_group'] == g).astype(int)
+        df['treat_x_post'] = df['treat'] * df['post']
+
+        formula = f'{outcome} ~ treat + post + treat_x_post'
+        if controls:
+            avail = [c for c in controls if c in df.columns and df[c].notna().sum() > 20]
+            if avail:
+                formula += ' + ' + ' + '.join(avail)
+
+        try:
+            model = smf.ols(formula, data=df).fit(
+                cov_type='cluster',
+                cov_kwds={'groups': df['state_fips']},
+            )
+            ci = model.conf_int().loc['treat_x_post']
+            pre = df[df['post'] == 0]
+            records.append({
+                'cohort_year':       g,
+                'n_treated':         treated['state'].nunique(),
+                'n_control':         never['state'].nunique(),
+                'coef':              model.params['treat_x_post'],
+                'se':                model.bse['treat_x_post'],
+                'ci_lower':          ci[0],
+                'ci_upper':          ci[1],
+                'pvalue':            model.pvalues['treat_x_post'],
+                'pre_mean_treated':  pre.loc[pre['treat'] == 1, outcome].mean(),
+                'pre_mean_control':  pre.loc[pre['treat'] == 0, outcome].mean(),
+            })
+        except Exception as exc:
+            print(f'  [WARN] cohort {g}: {exc}')
+
+    return pd.DataFrame(records)

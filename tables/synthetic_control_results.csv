@@ -1,0 +1,3 @@
+state,treatment_year,avg_post_gap,rmspe_pre,rmspe_post,rmspe_ratio
+Louisiana,2016,-15.147,10.085,21.426,2.12
+Virginia,2019,-100.16,70.981,101.609,1.43
