@@ -1,0 +1,10 @@
+outcome,method,att,se,ci_lower,ci_upper
+allcause_age_adj_rate,Callaway-Sant'Anna,-10.5009,5.6647,-21.6037,0.6019
+allcause_crude_rate,Callaway-Sant'Anna,-16.8424,8.8379,-34.1646,0.4799
+diabetes_age_adj_rate,Callaway-Sant'Anna,-0.5255,0.6518,-1.8029,0.752
+diabetes_crude_rate,Callaway-Sant'Anna,-0.7284,0.7126,-2.1251,0.6683
+maternal_age_adj_rate,Callaway-Sant'Anna,0.2683,0.0711,0.129,0.4076
+maternal_crude_rate,Callaway-Sant'Anna,0.2484,0.0874,0.0771,0.4197
+diabetes_prevalence,Callaway-Sant'Anna,0.0872,0.1702,-0.2465,0.4209
+poverty_rate,Callaway-Sant'Anna,0.5713,0.3379,-0.0909,1.2336
+median_household_income,Callaway-Sant'Anna,1452.1558,777.1975,-71.1513,2975.4628

@@ -34,3 +34,6 @@ renv/staging/
 # OS
 .DS_Store
 Thumbs.db
+
+# Personal notes (not for GitHub)
+plan.md
