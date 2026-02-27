@@ -58,6 +58,16 @@ This document provides detailed information on each data source used in the anal
 - CDC suppresses counts < 10 for privacy. States with small populations may have missing values for specific causes.
 - Age-adjusted rates use the 2000 U.S. standard population.
 
+### Known Data Limitation — Maternal Mortality Suppression
+
+**364 of 663 state-year observations (55%) are missing `maternal_age_adj_rate` and `maternal_crude_rate`.** This is an inherent CDC WONDER data quality issue, not a code bug:
+
+- CDC WONDER marks any cell with **fewer than 20 maternal deaths** as `"Unreliable"` and excludes it from downloads, per federal confidentiality standards (45 CFR Part 164).
+- The classic WONDER database (2010–2020) covers only **38 of 51 states** for maternal mortality; 13 states have too few deaths in early years to produce reliable rates.
+- Most missingness is concentrated in **small-population states** (Alaska, Delaware, Hawaii, Montana, North Dakota, Vermont, Wyoming, etc.) and in **earlier years** (2010–2015) before maternal mortality increased nationally.
+
+**Implication for analysis:** Maternal mortality regressions are restricted to the subset of state-years with non-missing data. This introduces a potential **selection bias** — remaining observations skew toward larger, more populous states. Maternal results should be interpreted with caution and treated as exploratory rather than definitive. As a robustness check, aggregate (pooled) national-level trends can be used to verify directional consistency.
+
 ---
 
 ## 3. CDC Diabetes Surveillance System
