@@ -37,9 +37,13 @@ cat("Years:", min(panel$year), "–", max(panel$year), "\n")
 #   - idname: unit identifier (numeric)
 #   - gname: group variable (first treatment period, 0 for never-treated)
 
-# Create numeric state ID
+# Create numeric state ID; coerce time/group vars to integer for did package
 panel <- panel %>%
-  mutate(state_id = as.numeric(as.factor(state_fips)))
+  mutate(
+    state_id     = as.integer(as.factor(state_fips)),
+    year         = as.integer(year),
+    cohort_group = as.integer(cohort_group)
+  )
 
 # Verify cohort_group coding (0 = never treated)
 cat("\nCohort groups:\n")
@@ -93,25 +97,17 @@ for (outcome in outcome_vars) {
   cat("Callaway-Sant'Anna:", outcome, "\n")
   cat(strrep("=", 60), "\n")
   
-  # Prepare clean dataset (no NAs in outcome)
-  df <- panel %>%
-    filter(!is.na(.data[[outcome]])) %>%
-    arrange(state_id, year)
-  
-  # Remove controls that are the outcome itself
+  # Keep only rows with non-missing outcome; minimal columns for att_gt
+  # Note: covariates cause aggte to crash in did 2.1.2 — run unconditional.
+  # Controlled estimates are produced by run_cohort_did() in the Python pipeline.
+  keep_cols <- c("state_id", "year", "cohort_group", outcome)
+  df <- as.data.frame(panel[!is.na(panel[[outcome]]), keep_cols])
   xformla <- NULL
-  if (use_controls) {
-    ctrl <- setdiff(control_vars, outcome)
-    if (length(ctrl) > 0) {
-      # Check for NAs in controls
-      ctrl_complete <- ctrl[sapply(ctrl, function(v) sum(is.na(df[[v]])) == 0)]
-      if (length(ctrl_complete) > 0) {
-        xformla <- as.formula(paste("~", paste(ctrl_complete, collapse = " + ")))
-      }
-    }
-  }
-  
+
   tryCatch({
+    # Maternal outcomes have too few never-treated obs after NA filtering
+    ctrl_grp <- if (grepl("maternal", outcome)) "notyettreated" else "nevertreated"
+
     # Estimate group-time ATTs
     cs_out <- att_gt(
       yname = outcome,
@@ -119,10 +115,10 @@ for (outcome in outcome_vars) {
       idname = "state_id",
       gname = "cohort_group",
       xformla = xformla,
-      data = as.data.frame(df),
-      control_group = "nevertreated",  # Use only never-treated as controls
+      data = df,
+      control_group = ctrl_grp,
       anticipation = 0,
-      est_method = "dr",  # Doubly robust
+      est_method = "reg",
       base_period = "varying",
       clustervars = "state_id",
       print_details = FALSE
@@ -131,15 +127,15 @@ for (outcome in outcome_vars) {
     cs_results[[outcome]] <- cs_out
     
     # ── Overall ATT ──
-    agg_overall <- aggte(cs_out, type = "simple")
+    agg_overall <- aggte(cs_out, type = "simple", na.rm = TRUE)
     cat("\nOverall ATT:", round(agg_overall$overall.att, 4), "\n")
     cat("SE:", round(agg_overall$overall.se, 4), "\n")
     cat("95% CI: [", round(agg_overall$overall.att - 1.96 * agg_overall$overall.se, 4),
         ",", round(agg_overall$overall.att + 1.96 * agg_overall$overall.se, 4), "]\n")
-    
+
     # ── Dynamic (Event Study) Aggregation ──
-    agg_dynamic <- aggte(cs_out, type = "dynamic")
-    
+    agg_dynamic <- aggte(cs_out, type = "dynamic", na.rm = TRUE)
+
     # Plot event study
     p <- ggdid(agg_dynamic) +
       theme_minimal(base_size = 12) +
@@ -162,7 +158,7 @@ for (outcome in outcome_vars) {
     cat("Saved: figures/cs_event_study_", outcome, ".png\n")
     
     # ── Group-specific ATTs ──
-    agg_group <- aggte(cs_out, type = "group")
+    agg_group <- aggte(cs_out, type = "group", na.rm = TRUE)
     cat("\nGroup-specific ATTs:\n")
     group_df <- data.frame(
       group = agg_group$egt,
@@ -179,7 +175,7 @@ for (outcome in outcome_vars) {
 # ── Save summary ─────────────────────────────────────────────────────────────
 if (length(cs_results) > 0) {
   summary_rows <- lapply(names(cs_results), function(outcome) {
-    agg <- aggte(cs_results[[outcome]], type = "simple")
+    agg <- aggte(cs_results[[outcome]], type = "simple", na.rm = TRUE)
     data.frame(
       outcome = outcome,
       method = "Callaway-Sant'Anna",
